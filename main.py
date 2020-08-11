@@ -7,6 +7,7 @@ from phonenumbers import carrier
 import requests
 import json
 import pickle
+import re
 
 TTS = pyttsx3.init()
 settings = {
@@ -19,7 +20,7 @@ settings = {
 
 
 #text to speech
-def say(txt):
+def speak(txt):
     #changes voice/accent
     voice = TTS.getProperty('voices')[settings['voice_accent']].id
     TTS.setProperty('voice', voice)
@@ -50,7 +51,7 @@ def listen():
             # Using google to recognize audio
             txt = r.recognize_google(audio).lower()
 
-            say("Did you say, " + txt)
+            speak("Did you say, " + txt)
 
     except speech_recognition.RequestError as e:
         output('Could not request results; {0}'.format(e))
@@ -63,28 +64,28 @@ def listen():
 def output(txt):
     print('\n' + txt)
     if settings['voice_enabled']:
-        say(txt)
+        speak(txt)
 
 
 #outputs response based on query
 def process(query):
     #lists of text to identify query meaning
-    farewell_list = ['bye', 'done', 'exit', 'quit', 'q']
-    greeting_list = ['hello', 'hi', 'yo']
-    name_list = ['set my name', 'change my name']
-    voice_toggle_list = ['enable voice', 'disable voice']
-    unread_email_list = ['my emails', 'my email', 'unread emails', 'unread email']
-    phone_carrier_list = ['phone provider', 'phone carrier']
+    farewell_list = {'bye', 'done', 'exit', 'quit', "q"}
+    greeting_list = {'hello', 'hi'}
+    name_list = {'set my name', 'change my name'}
+    voice_toggle_list = {'enable voice', 'disable voice'}
+    unread_email_list = {'my emails', 'my email', 'unread emails', 'unread email'}
+    phone_carrier_list = {'phone provider', 'phone carrier'}
 
     #choose action based off input
-    if any(word in query for word in farewell_list):
+    if farewell_list & query:
         output('Goodbye.')
         exit()
-    elif any(word in query for word in greeting_list):
+    elif greeting_list & query:
         intro()
     elif 'settings' in query:
         change_settings()
-    elif any(word in query for word in name_list):
+    elif name_list & query:
         change_name()
     elif 'voice volume' in query:
         change_voice_volume()
@@ -92,7 +93,7 @@ def process(query):
         change_voice_rate()
     elif 'voice rate' in query:
         change_voice_rate()
-    elif any(word in query for word in voice_toggle_list):
+    elif voice_toggle_list & query:
         toggle_voice()
     elif 'voice accent' in query:
         change_voice_accent()
@@ -102,9 +103,9 @@ def process(query):
         download_speed()
     elif 'upload speed' in query:
         upload_speed()
-    elif any(word in query for word in unread_email_list):
+    elif unread_email_list & query:
         check_email()
-    elif any(word in query for word in phone_carrier_list):
+    elif phone_carrier_list & query:
         phone_number_info()
     else:
         output('Sorry, I don\'t understand.')
@@ -341,7 +342,7 @@ def main():
         init_name()
     while True:
         query = str(input('>>> ')).strip().lower()
-        process(query)
+        process(set(query.split()))
         print()
 
 
