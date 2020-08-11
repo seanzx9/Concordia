@@ -8,63 +8,31 @@ import requests
 import json
 import pickle
 
-SETTINGS = {
+TTS = pyttsx3.init()
+settings = {
     'name': '',
     'voice_volume': 1.0,
     'voice_rate': 160,
-    'voice_enabled': False
+    'voice_enabled': False,
+    'voice_accent': 0
 }
 
 
-#outputs response based on query
-def process(query):
-    #lists of text to identify query meaning
-    greeting_list = ['hello', 'hi', 'yo']
-    farewell_list = ['bye', 'done', 'exit']
-    name_list = ['set my name', 'change my name']
-    email_list = ['my emails', 'my email', 'unread emails', 'unread email']
-
-    #choose action based off input
-    if any(word in query for word in farewell_list):
-        output('Goodbye.')
-        exit()
-    elif any(word in query for word in greeting_list):
-        intro()
-    elif 'settings' in query:
-        change_settings()
-    elif any(word in query for word in name_list):
-        change_name()
-    elif 'internet speed' in query:
-        internet_speed()
-    elif 'download speed' in query:
-        download_speed()
-    elif 'upload speed' in query:
-        upload_speed()
-    elif any(word in query for word in email_list):
-        check_email()
-    elif 'phone' in query:
-        phone_number_info()
-    else:
-        output('Sorry, I don\'t understand.')
-
-
-#modified text to speech
+#text to speech
 def say(txt):
-    tts = pyttsx3.init()
-
     #changes voice/accent
-    voice = tts.getProperty('voices')[1].id
-    tts.setProperty('voice', voice)
+    voice = TTS.getProperty('voices')[settings['voice_accent']].id
+    TTS.setProperty('voice', voice)
 
     #sets volume
-    tts.setProperty('volume', SETTINGS['voice_volume'])
+    TTS.setProperty('volume', settings['voice_volume'])
 
     #adjusts the speech rate
-    tts.setProperty('rate', SETTINGS['voice_rate'])
+    TTS.setProperty('rate', settings['voice_rate'])
 
     #text to speech
-    tts.say(txt)
-    tts.runAndWait()
+    TTS.say(txt)
+    TTS.runAndWait()
 
 
 #speech to text
@@ -94,16 +62,64 @@ def listen():
 #outputs text
 def output(txt):
     print('\n' + txt)
-    if SETTINGS['voice_enabled']:
+    if settings['voice_enabled']:
         say(txt)
 
 
-#opening message
-def intro():
-    if SETTINGS['name'] == '':
-        output('Hello. How can I help you?')
+#outputs response based on query
+def process(query):
+    #lists of text to identify query meaning
+    farewell_list = ['bye', 'done', 'exit', 'quit', 'q']
+    greeting_list = ['hello', 'hi', 'yo']
+    name_list = ['set my name', 'change my name']
+    voice_toggle_list = ['enable voice', 'disable voice']
+    unread_email_list = ['my emails', 'my email', 'unread emails', 'unread email']
+    phone_carrier_list = ['phone provider', 'phone carrier']
+
+    #choose action based off input
+    if any(word in query for word in farewell_list):
+        output('Goodbye.')
+        exit()
+    elif any(word in query for word in greeting_list):
+        intro()
+    elif 'settings' in query:
+        change_settings()
+    elif any(word in query for word in name_list):
+        change_name()
+    elif 'voice volume' in query:
+        change_voice_volume()
+    elif 'voice rate' in query:
+        change_voice_rate()
+    elif 'voice rate' in query:
+        change_voice_rate()
+    elif any(word in query for word in voice_toggle_list):
+        toggle_voice()
+    elif 'voice accent' in query:
+        change_voice_accent()
+    elif 'internet speed' in query:
+        internet_speed()
+    elif 'download speed' in query:
+        download_speed()
+    elif 'upload speed' in query:
+        upload_speed()
+    elif any(word in query for word in unread_email_list):
+        check_email()
+    elif any(word in query for word in phone_carrier_list):
+        phone_number_info()
     else:
-        output(f"Hi {SETTINGS['name']}. How can I help you?")
+        output('Sorry, I don\'t understand.')
+
+
+#load previous settings from file
+def load_settings():
+    global settings
+
+    try:
+        with open('settings.pkl', 'rb') as f:
+            settings = pickle.load(f)
+    except FileNotFoundError:
+        with open('settings.pkl', 'wb') as f:
+            pickle.dump(settings, f)
 
 
 #change general assistant settings
@@ -112,69 +128,142 @@ def change_settings():
         choice = str(input('\nWhat would you like to change?\n'
                            '(1) Your name\n'
                            '(2) Voice volume\n'
-                           '(3) Voice rate\n'
-                           '(4) Voice enabled\n\n'
-                           '>>>')).strip().lower()
-        if choice not in ['1', '2', '3', '4',
-                          'your name', 'voice volume', 'voice rate', 'voice enabled',
-                          'name', 'volume', 'rate']:
-            output("Please choose a valid option...\n")
+                           '(3) Speech rate\n'
+                           '(4) Voice enabled\n'
+                           '(5) Change voice accent\n'
+                           '(6) Reset default settings\n\n'
+                           '>>> ')).strip().lower()
+        if choice not in ['1', '2', '3', '4', '5', '6'
+                          'your name', 'voice volume', 'voice rate', 'speech rate', 'voice enabled', 'voice accent',
+                          'name', 'volume', 'rate', 'accent', 'reset', 'default']:
+            output("Please choose a valid option...")
         else:
             break
 
     if choice in ['1', 'your name', 'name']:
         change_name()
     elif choice in ['2', 'voice volume', 'volume']:
-        pass
+        change_voice_volume()
     elif choice in ['3', 'voice rate', 'rate']:
-        pass
+        change_voice_rate()
     elif choice in ['4', 'voice enabled', 'enable', 'disable']:
-        pass
+        toggle_voice()
+    elif choice in ['5', 'voice_accent', 'accent']:
+        change_voice_accent()
+    elif choice in ['6', 'reset', 'default']:
+        default_settings()
 
 
 #change name of user
 def change_name():
-    global SETTINGS
+    global settings
 
-    SETTINGS['name'] = str(input("\nYour name: ")).strip()
-    output(f"Hi {SETTINGS['name']}. Nice to meet you.")
+    settings['name'] = str(input("\nYour name: ")).strip()
+    output(f"Hi {settings['name']}. Nice to meet you.")
     with open('settings.pkl', 'wb') as f:
-        pickle.dump(SETTINGS, f)
+        pickle.dump(settings, f)
 
 
 #change volume of assistant
+def change_voice_volume():
+    global settings
+
+    output(f"The current volume is {int(settings['voice_volume'] * 100)}%.")
+    ans = str(input("\nNew volume: ")).strip()
+    if '%' in ans:
+        ans = ans.replace('%', '')
+    settings['voice_volume'] = float(ans) / 100
+    output(f"Volume set to {int(settings['voice_volume'] * 100)}%.")
+    with open('settings.pkl', 'wb') as f:
+        pickle.dump(settings, f)
 
 
 #change voice rate of assistant
+def change_voice_rate():
+    global settings
+
+    output(f"The current speech rate is {int(settings['voice_rate'])}.")
+    settings['voice_rate'] = float(input("\nNew rate: "))
+    output(f"Rate set to {int(settings['voice_rate'])}.")
+    with open('settings.pkl', 'wb') as f:
+        pickle.dump(settings, f)
 
 
 #enable/disable voice
-
-
-#change the voice volume
-def change_volume():
-    global SETTINGS
-
-
-#change the voice rate
-def change_rate():
-    global SETTINGS
-
-
-#toggle voice on or off
 def toggle_voice():
-    global SETTINGS
+    global settings
+
+    if settings['voice_enabled'] is False:
+        output('My voice is currently disabled, would you like to enable it?\n')
+        ans = str(input('>>> ')).lower().strip()
+        if ans in ['y', 'yes', 'enable']:
+            settings['voice_enabled'] = True
+            with open('settings.pkl', 'wb') as f:
+                pickle.dump(settings, f)
+    else:
+        output('My voice is currently enabled, would you like to disable it?\n')
+        ans = str(input('>>> ')).lower().strip()
+        if ans in ['y', 'yes', 'disable']:
+            settings['voice_enabled'] = False
+            with open('settings.pkl', 'wb') as f:
+                pickle.dump(settings, f)
+
+    if settings['voice_enabled'] is False:
+        output('Voice disabled.')
+    else:
+        output('Voice enabled')
+
+
+#change voice accent
+def change_voice_accent():
+    global settings
+
+    voices = TTS.getProperty('voices')
+    output(f"Your current voice is {voices[settings['voice_accent']].name}.\n\n"
+           f"Your choices to choose from are:")
+    for i in range(len(voices)):
+        print(f"({i + 1}) {voices[i].name}")
+
+    settings['voice_accent'] = int(input('\n>>> ')) - 1
+    output(f"Voice set to {voices[settings['voice_accent']].name}.")
+    with open('settings.pkl', 'wb') as f:
+        pickle.dump(settings, f)
+
+
+#reset all settings to default
+def default_settings():
+    global settings
+
+    output('Are you sure you want to clear your settings?\n')
+    ans = str(input('>>> '))
+    if ans in ['y', 'yes']:
+        settings['name'] = ''
+        settings['voice_volume'] = 1.0
+        settings['voice_rate'] = 160
+        settings['voice_enabled'] = False
+        settings['voice_accent'] = 0
+        output('Default settings set.')
+        with open('settings.pkl', 'wb') as f:
+            pickle.dump(settings, f)
+
+
+# opening message
+def intro():
+    if settings['name'] == '':
+        output('Hello. How can I help you?')
+    else:
+        output(f"Hi {settings['name']}. How can I help you?")
 
 
 #introduction message and gets name of user
 def init_name():
-    global SETTINGS
+    global settings
 
-    print('My name is Concordia, your virtual assistant. What should I call you?')
-    SETTINGS['name'] = str(input("Your name: ")).strip()
-    print(f"Hi {SETTINGS['name']}. How can I help you today?\n")
+    print('My name is Concordia, your virtual assistant. What should I call you?\n')
+    settings['name'] = str(input("Your name: ")).strip()
+    print(f"\nHi {settings['name']}. How can I help you today?\n")
     with open('settings.pkl', 'wb') as f:
-        pickle.dump(SETTINGS, f)
+        pickle.dump(settings, f)
 
 
 #finds download and upload speed
@@ -246,21 +335,9 @@ def phone_number_info():
             print(number)
 
 
-#load previous settings from file
-def load_settings():
-    global SETTINGS
-
-    try:
-        with open('settings.pkl', 'rb') as f:
-            SETTINGS = pickle.load(f)
-    except FileNotFoundError:
-        with open('settings.pkl', 'wb') as f:
-            pickle.dump(SETTINGS, f)
-
-
 def main():
     load_settings()
-    if SETTINGS['name'] == '':
+    if settings['name'] == '':
         init_name()
     while True:
         query = str(input('>>> ')).strip().lower()
